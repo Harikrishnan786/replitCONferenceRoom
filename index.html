@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conference Room Booking</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            display: flex; /* Flexbox for centering */
+            flex-direction: column; /* Ensure header and form stack vertically */
+            justify-content: center; /* Center content vertically */
+            align-items: center; /* Center content horizontally */
+            height: 100vh; /* Full viewport height */
+            margin: 0; /* Remove default margin */
+            background-color: #f9f9f9; /* Optional background color */
+            font-family: Arial, sans-serif; /* Consistent font */
+        }
+        h1 {
+            margin-bottom: 50px; /* Add spacing between heading and form */
+        }
+        h2 {
+            margin-bottom: 100px; /* Add spacing between heading and form */
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 300px;
+            padding: 20px;
+            border-radius: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Optional shadow for aesthetics */
+        }
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            background: linear-gradient(to left, #ff00ff, #00ffff);
+            cursor: pointer;
+            animation: blink 2s infinite; /* Add blinking animation */
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        /* Define the blinking animation */
+        @keyframes blink {
+            0% {
+                opacity: 1; /* Fully visible */
+            }
+            50% {
+                opacity: 0.5; /* Half transparent */
+            }
+            100% {
+                opacity: 1; /* Fully visible */
+            }
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-family: Arial, sans-serif;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+        }
+
+        caption {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conference Room Booking</h1>
+
+    <!-- Employee Details -->
+    <form id="employee-form">
+        <label for="employee-name" style="color: #333;">Emp Name:</label>
+        <input type="text" id="employee-name" name="employee_name" required style="
+            padding: 5px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px;">
+
+        <label for="employee-id" style="color: #333;">Emp ID:</label>
+        <input type="text" id="employee-id" name="employee_id" required style="
+            padding: 5px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px;">
+
+        <button type="button" onclick="enableBooking()">Continue</button>
+    </form>
+
+
+
+
+    
+    <!-- Room Booking Section -->
+    <div id="booking-section" style="display: none;">
+        <h1>Available Rooms</h1>
+        <div class="room-container">
+            {% for room in rooms %}
+                <div class="room-card">
+                    <h3>{{ room.name }}</h3>
+                    
+                    <p>Location: {{ room.location }}</p>
+                    <h4>Bookings:</h4>
+                    {% if room.bookings %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Emp Name</th>
+                                    <th>Start Date</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for booking in room.bookings %}
+                                    <tr>
+                                        <td>{{ booking.employee_name }}</td>
+                                        <td>{{ booking.start_time.strftime('%d/%m/%Y') }}</td>
+                                        <td>{{ booking.start_time.strftime('%H:%M') }}</td>
+                                        <td>{{ booking.end_time.strftime('%H:%M') }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p>No bookings yet.</p>
+                    {% endif %}
+                    <button onclick="openBookingModal('{{ room.id }}')">Book Room</button>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Booking Modal -->
+    <div id="booking-modal" style="display: none;">
+        <h3>Book Room</h3>
+        <form id="booking-form" action="/book" method="POST">
+            <input type="hidden" id="room-id" name="room_id">
+            <label for="start-time">Select Start Time:</label>
+            <input type="datetime-local" id="start-time" name="start_time" step="1800" required>
+            <script>
+                document.getElementById('start-time').addEventListener('input', function() {
+                    const value = this.value;
+                    if (value) {
+                        const date = new Date(value);
+                        const minutes = date.getMinutes();
+                        // Round to nearest 30 minutes
+                        if (minutes < 30) {
+                            date.setMinutes(0);
+                        } else {
+                            date.setMinutes(30);
+                        }
+                        this.value = date.toISOString().slice(0, 16);  // Update the input value to the rounded time
+                    }
+                });
+            </script>
+            <br>
+            <label for="end-time">Select End Time:</label>
+            <input type="datetime-local" id="end-time" name="end_time" step="1800" required>
+            <br>
+            <input type="hidden" id="employee-name-hidden" name="employee_name">
+            <input type="hidden" id="employee-id-hidden" name="employee_id">
+            <button type="submit">Confirm Booking</button>
+        </form>
+        <button onclick="closeBookingModal()">Cancel</button>
+    </div>
+
+    <script>
+        function enableBooking() {
+            const name = document.getElementById('employee-name').value;
+            const id = document.getElementById('employee-id').value;
+
+            if (name && id) {
+                document.getElementById('employee-name-hidden').value = name;
+                document.getElementById('employee-id-hidden').value = id;
+                document.getElementById('booking-section').style.display = 'block';
+                document.getElementById('employee-form').style.display = 'none';
+            } else {
+                alert('Please provide both Employee Name and Employee ID.');
+            }
+        }
+
+        function openBookingModal(roomId) {
+            document.getElementById('room-id').value = roomId;
+            document.getElementById('booking-modal').style.display = 'block';
+        }
+
+        function closeBookingModal() {
+            document.getElementById('booking-modal').style.display = 'none';
+        }
+
+        // Show a popup when booking is successful
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            Swal.fire({
+                icon: '{{ 'success' if category == 'success' else 'error' }}',
+                title: '{{ message }}',
+            });
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </script>
+</body>
+</html>
